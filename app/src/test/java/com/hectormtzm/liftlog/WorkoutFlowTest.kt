@@ -2,6 +2,9 @@ package com.hectormtzm.liftlog
 
 import androidx.test.core.app.ApplicationProvider
 import com.hectormtzm.liftlog.data.ExerciseEntity
+import com.hectormtzm.liftlog.data.ExerciseRepository
+import com.hectormtzm.liftlog.data.gifUrl
+import com.hectormtzm.liftlog.data.imageUrl
 import com.hectormtzm.liftlog.data.WeightUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -23,10 +26,45 @@ class WorkoutFlowTest {
     fun seedsExerciseLibrary() = runBlocking {
         c.exercises.seedIfNeeded()
         val all = c.exercises.observeAll().first()
-        assertTrue("expected the bundled library, got ${all.size}", all.size > 800)
-        val squat = c.exercises.get("Barbell_Squat")
-        assertNotNull(squat)
-        assertTrue(squat!!.primaryMuscleList.contains("quadriceps"))
+        assertTrue("expected the bundled library, got ${all.size}", all.size >= 1300)
+        val bench = c.exercises.get("edb_0025")
+        assertNotNull(bench)
+        assertEquals("Barbell Bench Press", bench!!.name)
+        assertTrue(bench.primaryMuscleList.contains("pectorals"))
+        assertTrue(bench.imageUrl()!!.endsWith(".jpg"))
+        assertTrue(bench.gifUrl()!!.endsWith(".gif"))
+        // Every exercise's muscle and equipment can be picked in the filters.
+        val muscles = all.flatMap { it.primaryMuscleList }.toSet()
+        assertEquals(emptySet<String>(), muscles - ExerciseRepository.MUSCLES.toSet())
+        assertEquals(emptySet<String>(), all.map { it.equipment }.toSet() - ExerciseRepository.EQUIPMENT.toSet())
+    }
+
+    @Test
+    fun legacyExercisesMoveToNewLibrary() = runBlocking {
+        c.exercises.seedIfNeeded()
+        val dao = c.db.exerciseDao()
+        // Exercises as an install with the earlier free-exercise-db library would have them.
+        dao.insertAll(listOf(
+            ExerciseEntity(id = "Barbell_Bench_Press_-_Medium_Grip", name = "Barbell Bench Press - Medium Grip", images = "Barbell_Bench_Press_-_Medium_Grip/0.jpg"),
+            ExerciseEntity(id = "Leg_Press", name = "Leg Press", images = "Leg_Press/0.jpg"),
+            ExerciseEntity(id = "Unused_Old", name = "Unused Old Exercise"),
+        ))
+        val planId = c.plans.createPlan("Mixed")
+        c.plans.addExercises(planId, listOf("Barbell_Bench_Press_-_Medium_Grip", "Leg_Press"))
+
+        c.exercises.migrateLegacy()
+
+        val ids = c.plans.observeExercises(planId).first().map { it.item.exerciseId }
+        assertEquals(listOf("edb_0025", "Leg_Press"), ids)           // matched -> new; unmatched stays
+        assertNull(dao.get("Barbell_Bench_Press_-_Medium_Grip"))     // no longer referenced -> removed
+        assertNull(dao.get("Unused_Old"))
+        val legPress = dao.get("Leg_Press")!!                       // still used -> kept with its photo
+        assertTrue(legPress.imageUrl()!!.contains("free-exercise-db"))
+
+        // Plans can swap a legacy exercise for a new one.
+        val pe = c.plans.observeExercises(planId).first()[1]
+        c.plans.replaceExercise(pe.item.id, "edb_0405")
+        assertEquals("Dumbbell Seated Shoulder Press", c.plans.observeExercises(planId).first()[1].displayName)
     }
 
     @Test

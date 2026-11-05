@@ -165,7 +165,9 @@ fun SettingsScreen(nav: NavController) {
             SettingRow("Liftlog", "Version ${BuildConfig.VERSION_NAME}") {}
             SettingRow(
                 "Exercise library",
-                "Exercise data and images from free-exercise-db (github.com/yuhonas/free-exercise-db), released into the public domain.",
+                "Exercise data from exercises-dataset (github.com/hasaneyldrm/exercises-dataset, MIT). " +
+                    "Exercise animations \u00A9 Gym visual \u2014 https://gymvisual.com/, used under license. " +
+                    "Food data from USDA FoodData Central and Open Food Facts.",
             ) {}
         }
     }

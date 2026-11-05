@@ -63,6 +63,8 @@ import com.hectormtzm.liftlog.data.Settings
 import com.hectormtzm.liftlog.data.WeightUnit
 import com.hectormtzm.liftlog.data.estimatedOneRepMax
 import com.hectormtzm.liftlog.data.imageUrl
+import com.hectormtzm.liftlog.data.gifUrl
+import com.hectormtzm.liftlog.data.ExerciseRepository
 import com.hectormtzm.liftlog.ui.Routes
 import com.hectormtzm.liftlog.ui.appViewModel
 import com.hectormtzm.liftlog.ui.components.ChartPoint
@@ -144,7 +146,7 @@ fun ExerciseDetailScreen(nav: NavController, exerciseId: String) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     e.primaryMuscleList.forEach { Tag(it.titleCase(), strong = true) }
                     e.secondaryMuscleList.forEach { Tag(it.titleCase()) }
-                    listOf(e.equipment, e.level, e.mechanic).filter { it.isNotBlank() }.forEach { Tag(it.titleCase()) }
+                    listOf(e.category, e.equipment, e.level, e.mechanic).filter { it.isNotBlank() }.distinct().forEach { Tag(it.titleCase()) }
                 }
             }
 
@@ -241,11 +243,38 @@ fun ExerciseDetailScreen(nav: NavController, exerciseId: String) {
     }
 }
 
-/** Alternates the start and end position photos to suggest the movement. */
+/** Animated demo for dataset exercises (with the required attribution); legacy photos otherwise. */
 @Composable
 private fun ExerciseImages(e: ExerciseEntity) {
-    val urls = e.imageList.indices.mapNotNull { e.imageUrl(it) }
     val shape = RoundedCornerShape(16.dp)
+    val gif = e.gifUrl()
+    if (gif != null) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.3f)
+                    .clip(shape)
+                    .background(androidx.compose.ui.graphics.Color.White),
+                contentAlignment = Alignment.Center,
+            ) {
+                AsyncImage(
+                    model = gif,
+                    contentDescription = e.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            Text(
+                ExerciseRepository.MEDIA_ATTRIBUTION,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        return
+    }
+    val urls = e.imageList.indices.mapNotNull { e.imageUrl(it) }
     if (urls.isEmpty()) {
         Box(
             Modifier

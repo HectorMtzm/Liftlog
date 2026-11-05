@@ -36,9 +36,9 @@ fun CustomExerciseDialog(
     onSave: (name: String, muscle: String, equipment: String, category: String, instructions: String) -> Unit,
 ) {
     var name by remember { mutableStateOf(initial?.name ?: initialName) }
-    var muscle by remember { mutableStateOf(initial?.primaryMuscleList?.firstOrNull() ?: "chest") }
+    var muscle by remember { mutableStateOf(initial?.primaryMuscleList?.firstOrNull() ?: "pectorals") }
     var equipment by remember { mutableStateOf(initial?.equipment?.takeIf { it.isNotBlank() } ?: "barbell") }
-    var category by remember { mutableStateOf(initial?.category?.takeIf { it.isNotBlank() } ?: "strength") }
+    var category by remember { mutableStateOf(initial?.category?.takeIf { it.isNotBlank() } ?: "chest") }
     var instructions by remember { mutableStateOf(initial?.instructions ?: "") }
 
     AlertDialog(
@@ -55,7 +55,7 @@ fun CustomExerciseDialog(
                 )
                 Picker("Primary muscle", muscle, ExerciseRepository.MUSCLES) { muscle = it }
                 Picker("Equipment", equipment, ExerciseRepository.EQUIPMENT) { equipment = it }
-                Picker("Category", category, ExerciseRepository.CATEGORIES) { category = it }
+                Picker("Body part", category, ExerciseRepository.CATEGORIES) { category = it }
                 OutlinedTextField(
                     value = instructions, onValueChange = { instructions = it },
                     label = { Text("Notes (optional)") }, minLines = 2, modifier = Modifier.fillMaxWidth(),

@@ -74,6 +74,12 @@ class PlanRepository(
         dao.updatePlanExercises(listOf(pe.copy(restSeconds = seconds)))
     }
 
+    /** Swaps the exercise of a plan entry, keeping its sets, rest and custom name. */
+    suspend fun replaceExercise(planExerciseId: Long, exerciseId: String) {
+        val pe = dao.getPlanExercise(planExerciseId) ?: return
+        dao.updatePlanExercises(listOf(pe.copy(exerciseId = exerciseId)))
+    }
+
     /** Shows [name] for this exercise in the plan and its workouts; blank restores the original name. */
     suspend fun renameExercise(planExerciseId: Long, name: String) {
         val pe = dao.getPlanExercise(planExerciseId) ?: return

@@ -1,6 +1,11 @@
 package com.hectormtzm.liftlog
 
 import android.app.Application
+import android.os.Build
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
 import com.hectormtzm.liftlog.data.ExerciseRepository
 import com.hectormtzm.liftlog.data.LiftlogDatabase
 import com.hectormtzm.liftlog.data.PlanRepository
@@ -25,11 +30,19 @@ class AppContainer(val app: Application) {
     val nutrition = NutritionRepository(app, db, MealPhotos(app), ClaudeNutrition({ apiKey.key.value }, { settings.current().claudeModel }))
 }
 
-class LiftlogApp : Application() {
+class LiftlogApp : Application(), ImageLoaderFactory {
     lateinit var container: AppContainer
         private set
 
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Coil loader that can play animated GIFs (exercise demos). */
+    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
+        .components {
+            if (Build.VERSION.SDK_INT >= 28) add(ImageDecoderDecoder.Factory()) else add(GifDecoder.Factory())
+        }
+        .crossfade(true)
+        .build()
 
     override fun onCreate() {
         super.onCreate()

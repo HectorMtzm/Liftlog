@@ -81,7 +81,7 @@ fun ExerciseLibraryScreen(nav: NavController, mode: PickMode, targetId: Long) {
                     Text(
                         when (mode) {
                             PickMode.BROWSE -> "Exercises"
-                            PickMode.REPLACE -> "Replace with"
+                            PickMode.REPLACE, PickMode.PLAN_REPLACE -> "Replace with"
                             else -> "Add exercises"
                         }
                     )
@@ -102,7 +102,7 @@ fun ExerciseLibraryScreen(nav: NavController, mode: PickMode, targetId: Long) {
             }
         },
         bottomBar = {
-            if (picking && mode != PickMode.REPLACE && selected.isNotEmpty()) {
+            if (picking && !mode.isReplace && selected.isNotEmpty()) {
                 Surface(tonalElevation = 3.dp, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                     Button(
                         onClick = { vm.confirm(selected) { nav.popBackStack() } },
@@ -176,12 +176,12 @@ fun ExerciseLibraryScreen(nav: NavController, mode: PickMode, targetId: Long) {
                     items(list, key = { it.id }) { ex ->
                         ExerciseRow(
                             ex = ex,
-                            checked = if (picking && mode != PickMode.REPLACE) ex.id in selected else null,
+                            checked = if (picking && !mode.isReplace) ex.id in selected else null,
                             onClick = {
                                 focus.clearFocus()
                                 when (mode) {
                                     PickMode.BROWSE -> nav.navigate(Routes.exercise(ex.id))
-                                    PickMode.REPLACE -> vm.confirm(listOf(ex.id)) { nav.popBackStack() }
+                                    PickMode.REPLACE, PickMode.PLAN_REPLACE -> vm.confirm(listOf(ex.id)) { nav.popBackStack() }
                                     else -> vm.toggle(ex.id)
                                 }
                             },
@@ -189,6 +189,14 @@ fun ExerciseLibraryScreen(nav: NavController, mode: PickMode, targetId: Long) {
                         HorizontalDivider(
                             Modifier.padding(start = 80.dp),
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+                    }
+                    item {
+                        Text(
+                            ExerciseRepository.MEDIA_ATTRIBUTION,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp),
                         )
                     }
                 }
@@ -206,7 +214,7 @@ fun ExerciseLibraryScreen(nav: NavController, mode: PickMode, targetId: Long) {
                 vm.saveCustom(null, name, muscle, equipment, category, instructions) { id ->
                     when (mode) {
                         PickMode.BROWSE -> nav.navigate(Routes.exercise(id))
-                        PickMode.REPLACE -> vm.confirm(listOf(id)) { nav.popBackStack() }
+                        PickMode.REPLACE, PickMode.PLAN_REPLACE -> vm.confirm(listOf(id)) { nav.popBackStack() }
                         else -> vm.toggle(id)
                     }
                 }
@@ -270,3 +278,5 @@ private fun DropdownFilterChip(
         )
     }
 }
+
+private val PickMode.isReplace get() = this == PickMode.REPLACE || this == PickMode.PLAN_REPLACE

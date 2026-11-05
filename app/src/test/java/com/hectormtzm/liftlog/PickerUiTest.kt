@@ -52,12 +52,12 @@ class PickerUiTest {
         rule.onNodeWithText("Triceps").performClick()
         // Dialog closes and the chip shows the choice; results are triceps exercises.
         rule.waitUntil(10_000) { rule.onAllNodes(hasText("Triceps")).fetchSemanticsNodes().isNotEmpty() }
-        rule.waitUntil(10_000) { rule.onAllNodes(hasText("Bench Dips", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10_000) { rule.onAllNodes(hasText("Triceps  ·", substring = true)).fetchSemanticsNodes().isNotEmpty() }
 
         rule.waitForIdle()
         rule.onNodeWithText("Equipment").performClick()
-        scrollDialogUntil("Other")
-        rule.onNodeWithText("Other").performClick()
-        rule.waitUntil(10_000) { rule.onAllNodes(hasText("Other")).fetchSemanticsNodes().isNotEmpty() }
+        scrollDialogUntil("Upper Body Ergometer")
+        rule.onNodeWithText("Upper Body Ergometer").performClick()
+        rule.waitUntil(10_000) { rule.onAllNodes(hasText("Upper Body Ergometer")).fetchSemanticsNodes().isNotEmpty() }
     }
 }

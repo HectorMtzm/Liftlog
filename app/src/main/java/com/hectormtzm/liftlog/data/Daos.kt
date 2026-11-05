@@ -10,8 +10,30 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExerciseDao {
-    @Query("SELECT COUNT(*) FROM exercises WHERE isCustom = 0")
-    suspend fun builtInCount(): Int
+    @Query("SELECT COUNT(*) FROM exercises WHERE id LIKE 'edb_%'")
+    suspend fun datasetCount(): Int
+
+    @Query("SELECT * FROM exercises WHERE id LIKE 'edb_%'")
+    suspend fun datasetExercises(): List<ExerciseEntity>
+
+    /** Built-in exercises from the earlier free-exercise-db library. */
+    @Query("SELECT * FROM exercises WHERE isCustom = 0 AND id NOT LIKE 'edb_%'")
+    suspend fun legacyBuiltIns(): List<ExerciseEntity>
+
+    @Query("UPDATE plan_exercises SET exerciseId = :newId WHERE exerciseId = :oldId")
+    suspend fun repointPlans(oldId: String, newId: String)
+
+    @Query("UPDATE workout_exercises SET exerciseId = :newId WHERE exerciseId = :oldId")
+    suspend fun repointWorkouts(oldId: String, newId: String)
+
+    @Query(
+        """SELECT (SELECT COUNT(*) FROM plan_exercises WHERE exerciseId = :id)
+            + (SELECT COUNT(*) FROM workout_exercises WHERE exerciseId = :id)"""
+    )
+    suspend fun referenceCount(id: String): Int
+
+    @Query("DELETE FROM exercises WHERE id = :id")
+    suspend fun delete(id: String)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(items: List<ExerciseEntity>)

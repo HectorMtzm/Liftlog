@@ -154,6 +154,7 @@ fun PlanEditScreen(nav: NavController, planId: Long) {
                     isLast = pe == list.last(),
                     vm = vm,
                     onOpenExercise = { nav.navigate(Routes.exercise(pe.item.exerciseId)) },
+                    onReplace = { nav.navigate(Routes.picker(PickMode.PLAN_REPLACE, pe.item.id)) },
                 )
             }
             item {
@@ -205,6 +206,7 @@ private fun PlanExerciseCard(
     isLast: Boolean,
     vm: PlanEditViewModel,
     onOpenExercise: () -> Unit,
+    onReplace: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
     var restPicker by remember { mutableStateOf(false) }
@@ -244,6 +246,7 @@ private fun PlanExerciseCard(
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("Set all sets...") }, onClick = { menu = false; setAll = true })
                         DropdownMenuItem(text = { Text("Rename exercise") }, onClick = { menu = false; rename = true })
+                        DropdownMenuItem(text = { Text("Replace exercise") }, onClick = { menu = false; onReplace() })
                         if (!isFirst) DropdownMenuItem(text = { Text("Move up") }, onClick = { menu = false; vm.move(pe.item.id, -1) })
                         if (!isLast) DropdownMenuItem(text = { Text("Move down") }, onClick = { menu = false; vm.move(pe.item.id, 1) })
                         DropdownMenuItem(text = { Text("Remove from plan") }, onClick = { menu = false; vm.removeExercise(pe.item.id) })

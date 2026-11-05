@@ -94,6 +94,7 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("io.coil-kt:coil-gif:2.7.0")
     implementation("com.anthropic:anthropic-java:3.4.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")

@@ -78,7 +78,7 @@ class ScreenshotTest {
         val planId = c.plans.createPlan("Push Day")
         c.plans.createPlan("Pull Day")
         c.plans.createPlan("Legs")
-        c.plans.addExercises(planId, listOf("Barbell_Bench_Press_-_Medium_Grip", "Dumbbell_Shoulder_Press", "Cable_Incline_Pushdown"))
+        c.plans.addExercises(planId, listOf("edb_0025", "edb_0405", "edb_0201"))
         val pes = c.plans.observeExercises(planId).first()
         c.plans.applyToAllSets(pes[0].item.id, 4, 8, lb.toKg(135.0)); c.plans.setRest(pes[0].item.id, 180)
         c.plans.applyToAllSets(pes[1].item.id, 3, 10, lb.toKg(40.0))
@@ -126,7 +126,7 @@ class ScreenshotTest {
         waitText("Rest")
         shot("04_workout_rest_timer")
 
-        rule.onNodeWithText("Barbell Bench Press - Medium Grip", useUnmergedTree = true).performClick()
+        rule.onNodeWithText("Barbell Bench Press", useUnmergedTree = true).performClick()
         waitText("Records")
         shot("05_exercise_detail")
 

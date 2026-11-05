@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class PickMode { BROWSE, PLAN, WORKOUT, REPLACE }
+enum class PickMode { BROWSE, PLAN, WORKOUT, REPLACE, PLAN_REPLACE }
 
 data class LibraryFilter(
     val query: String = "",
@@ -50,6 +50,7 @@ class ExerciseLibraryViewModel(private val c: AppContainer, val mode: PickMode, 
             PickMode.PLAN -> c.plans.addExercises(targetId, ids)
             PickMode.WORKOUT -> c.workouts.addExercises(targetId, ids)
             PickMode.REPLACE -> ids.firstOrNull()?.let { c.workouts.replaceExercise(targetId, it) }
+            PickMode.PLAN_REPLACE -> ids.firstOrNull()?.let { c.plans.replaceExercise(targetId, it) }
             PickMode.BROWSE -> Unit
         }
         onDone()

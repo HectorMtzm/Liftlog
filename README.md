@@ -6,7 +6,6 @@ to your next set. Log what you eat by searching foods, scanning a barcode, descr
 <p>
 <img src="docs/screenshots/01_plans.png" width="200">
 <img src="docs/screenshots/04_workout_rest_timer.png" width="200">
-<img src="docs/screenshots/05_exercise_detail.png" width="200">
 <img src="docs/screenshots/07_history.png" width="200">
 </p>
 
@@ -18,8 +17,11 @@ to your next set. Log what you eat by searching foods, scanning a barcode, descr
 - **Rest timer**: bar at the bottom of the workout (+/-15s, skip). It keeps running with the screen off, shows a
   countdown notification and vibrates when rest is over.
 - **Progression**: after finishing a workout the lifted weights become the plan's new targets (can be turned off in Settings).
-- **Exercise library**: 876 exercises from [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (public domain)
-  with photos, muscles, equipment and instructions. Search and filter by muscle / equipment. Add your own custom exercises.
+- **Exercise library**: 1,324 exercises from [exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset)
+  (data MIT licensed, see `app/src/main/assets/licenses/`) with animated demos, target and secondary muscles, equipment
+  and step-by-step instructions. Search and filter by muscle / equipment. Add your own custom exercises.
+  Exercise animations and thumbnails are © Gym visual — https://gymvisual.com/, used under license; they are not
+  stored in this repository but loaded by the app at runtime. Rebuild the data with `python3 tools/build_exercises.py`.
 - **History and PRs**: past workouts with duration, volume and sets; per-exercise history with a progress chart
   (top weight, estimated 1RM, volume). Sets that beat your best weight or estimated 1RM get a PR badge.
 - lb by default, kg available. All data stays on the device (Room database).
