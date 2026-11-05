@@ -20,10 +20,29 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Build food database (USDA SR Legacy)
+        run: python3 tools/build_usda_foods.py
+
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest --tests '*WorkoutFlowTest*'
+        run: ./gradlew testDebugUnitTest --tests '*WorkoutFlowTest*' --tests '*NutritionTest*'
+
+      - name: Decrypt signing key
+        env:
+          LIFTLOG_KEYSTORE_PASSWORD: ${{ secrets.LIFTLOG_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$LIFTLOG_KEYSTORE_PASSWORD" ]; then
+            echo "::warning::LIFTLOG_KEYSTORE_PASSWORD secret is not set; the APK will use a throwaway debug key and will not be published."
+            exit 0
+          fi
+          printf '%s' "$LIFTLOG_KEYSTORE_PASSWORD" > "$RUNNER_TEMP/pw"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in signing/liftlog.jks.enc \
+            -out "$RUNNER_TEMP/liftlog.jks" -pass file:"$RUNNER_TEMP/pw"
+          rm "$RUNNER_TEMP/pw"
+          echo "LIFTLOG_KEYSTORE_FILE=$RUNNER_TEMP/liftlog.jks" >> "$GITHUB_ENV"
 
       - name: Build APK
+        env:
+          LIFTLOG_KEYSTORE_PASSWORD: ${{ secrets.LIFTLOG_KEYSTORE_PASSWORD }}
         run: ./gradlew assembleRelease
 
       - uses: actions/upload-artifact@v4
@@ -32,7 +51,7 @@ jobs:
           path: app/build/outputs/apk/release/app-release.apk
 
       - name: Publish "latest" pre-release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.LIFTLOG_KEYSTORE_FILE != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

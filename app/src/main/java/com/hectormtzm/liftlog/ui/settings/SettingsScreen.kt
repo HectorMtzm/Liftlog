@@ -11,7 +11,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import com.hectormtzm.liftlog.ui.components.NumberField
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,6 +44,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.hectormtzm.liftlog.AppContainer
 import com.hectormtzm.liftlog.BuildConfig
+import com.hectormtzm.liftlog.data.NutritionGoals
 import com.hectormtzm.liftlog.data.Settings
 import com.hectormtzm.liftlog.data.WeightUnit
 import com.hectormtzm.liftlog.ui.appViewModel
@@ -54,6 +62,9 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun setUnit(u: WeightUnit) = viewModelScope.launch { c.settings.setUnit(u) }
     fun setRest(s: Int) = viewModelScope.launch { c.settings.setDefaultRest(s) }
     fun setUpdatePlan(v: Boolean) = viewModelScope.launch { c.settings.setUpdatePlanWeights(v) }
+    fun setGoals(g: NutritionGoals) = viewModelScope.launch { c.settings.setGoals(g) }
+    val apiKey: StateFlow<String> = c.apiKey.key
+    fun setApiKey(k: String) = c.apiKey.set(k)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +73,9 @@ fun SettingsScreen(nav: NavController) {
     val vm = appViewModel { SettingsViewModel(it) }
     val s by vm.settings.collectAsState()
     var restPicker by remember { mutableStateOf(false) }
+    var goalsDialog by remember { mutableStateOf(false) }
+    var keyDialog by remember { mutableStateOf(false) }
+    val apiKey by vm.apiKey.collectAsState()
 
     Scaffold(
         topBar = {
@@ -106,6 +120,19 @@ fun SettingsScreen(nav: NavController) {
                 Switch(checked = s.updatePlanWeights, onCheckedChange = vm::setUpdatePlan)
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            SectionLabel("Nutrition")
+            SettingRow(
+                "Daily goals",
+                "${s.goals.kcal} kcal  ·  P ${s.goals.protein} g  ·  C ${s.goals.carbs} g  ·  F ${s.goals.fat} g",
+                onClick = { goalsDialog = true },
+            ) {}
+            SettingRow(
+                "Claude API key",
+                if (apiKey.isBlank()) "Not set. Needed for photo and text estimates."
+                else "Set (ends in ${apiKey.takeLast(4)}). Stored only on this phone.",
+                onClick = { keyDialog = true },
+            ) {}
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
             SectionLabel("About")
             SettingRow("Liftlog", "Version ${BuildConfig.VERSION_NAME}") {}
             SettingRow(
@@ -115,6 +142,12 @@ fun SettingsScreen(nav: NavController) {
         }
     }
 
+    if (goalsDialog) {
+        GoalsDialog(s.goals, onDismiss = { goalsDialog = false }, onSave = { goalsDialog = false; vm.setGoals(it) })
+    }
+    if (keyDialog) {
+        ApiKeyDialog(apiKey, onDismiss = { keyDialog = false }, onSave = { keyDialog = false; vm.setApiKey(it) })
+    }
     if (restPicker) {
         RestPickerDialog(
             current = s.defaultRestSeconds,
@@ -155,4 +188,76 @@ private fun SettingRow(
         Spacer(Modifier.width(12.dp))
         trailing()
     }
+}
+
+@Composable
+private fun GoalsDialog(initial: NutritionGoals, onDismiss: () -> Unit, onSave: (NutritionGoals) -> Unit) {
+    var kcal by remember { mutableStateOf(initial.kcal.toDouble()) }
+    var p by remember { mutableStateOf(initial.protein.toDouble()) }
+    var c by remember { mutableStateOf(initial.carbs.toDouble()) }
+    var f by remember { mutableStateOf(initial.fat.toDouble()) }
+    val fromMacros = (p * 4 + c * 4 + f * 9).toInt()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Daily goals") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                GoalField("Calories (kcal)", kcal) { kcal = it }
+                GoalField("Protein (g)", p) { p = it }
+                GoalField("Carbs (g)", c) { c = it }
+                GoalField("Fat (g)", f) { f = it }
+                Text(
+                    "Your macros add up to $fromMacros kcal.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = { kcal = fromMacros.toDouble() }) { Text("Use $fromMacros kcal") }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(NutritionGoals(kcal.toInt(), p.toInt(), c.toInt(), f.toInt())) }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun GoalField(label: String, value: Double, onChange: (Double) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        NumberField(value, onChange, decimal = false, modifier = Modifier.width(96.dp))
+    }
+}
+
+@Composable
+private fun ApiKeyDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var key by remember { mutableStateOf(initial) }
+    var show by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Claude API key") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = key,
+                    onValueChange = { key = it.trim() },
+                    label = { Text("sk-ant-...") },
+                    singleLine = true,
+                    visualTransformation = if (show) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        TextButton(onClick = { show = !show }) { Text(if (show) "Hide" else "Show") }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Create a key at console.anthropic.com (API keys). It is stored only on this phone, " +
+                        "excluded from backups, and sent only to Anthropic. A photo estimate costs about 1-2 cents.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(key) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

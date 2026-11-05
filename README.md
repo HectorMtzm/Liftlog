@@ -1,6 +1,7 @@
 # Liftlog
 
-A simple Android workout tracker. Build plans, start one, tick off each set, and a rest timer counts down to your next set.
+A simple Android workout and nutrition tracker. Build plans, start one, tick off each set, and a rest timer counts down
+to your next set. Log what you eat by searching foods, scanning a barcode, describing it, or snapping a photo.
 
 <p>
 <img src="docs/screenshots/01_plans.png" width="200">
@@ -23,6 +24,27 @@ A simple Android workout tracker. Build plans, start one, tick off each set, and
   (top weight, estimated 1RM, volume). Sets that beat your best weight or estimated 1RM get a PR badge.
 - lb by default, kg available. All data stays on the device (Room database).
 
+### Nutrition
+
+<p>
+<img src="docs/screenshots/10_nutrition_day.png" width="200">
+<img src="docs/screenshots/13_add_food_search.png" width="200">
+<img src="docs/screenshots/11_meal_editor.png" width="200">
+</p>
+
+- **Daily view**: calories left against your goal, protein / carbs / fat bars, meals grouped into
+  breakfast, lunch, dinner and snacks. Swipe through days with the arrows.
+- **Search first**: about 7,800 generic foods from USDA FoodData Central (SR Legacy, public domain) are bundled,
+  with real serving sizes ("1 large egg = 50 g"). Packaged foods come from Open Food Facts (search or barcode scan).
+- **Claude fallback**: if a food is not in the database, "Estimate with Claude" turns plain text like
+  "2 eggs scrambled in butter, 2 slices toast" into items with macros.
+- **Photo**: take or pick a photo, add an optional note, and Claude estimates every item and its macros.
+- **Always editable**: change any amount or unit and the macros recalculate instantly; rename items and tap
+  Re-estimate to have Claude recompute them.
+- **Custom foods** with your own macros per serving, and recently used foods for quick re-logging.
+- Goals and your Anthropic API key are set in Settings. The key stays on the phone (excluded from backups).
+  Claude requests use `claude-opus-5-5` with structured JSON output.
+
 ## Install
 
 Every push to `main` builds an APK and attaches it to the
@@ -31,20 +53,26 @@ Every push to `main` builds an APK and attaches it to the
 
 ## Build
 
-Requires JDK 17 and the Android SDK (platform 35).
+Requires JDK 17, Python 3 and the Android SDK (platform 35).
 
 ```bash
-./gradlew assembleRelease        # app/build/outputs/apk/release/app-release.apk
-./gradlew testDebugUnitTest      # logic tests + renders screenshots to app/build/screenshots
+python3 tools/build_usda_foods.py   # downloads USDA data -> app/src/main/assets/foods.json (not committed)
+./gradlew assembleRelease           # app/build/outputs/apk/release/app-release.apk
+./gradlew testDebugUnitTest         # logic tests + renders screenshots to app/build/screenshots
 ```
+
+### Release signing
+
+Release APKs are signed with a fixed key so updates install over the previous version.
+`signing/liftlog.jks.enc` is the keystore encrypted with AES-256; CI decrypts it with the
+`LIFTLOG_KEYSTORE_PASSWORD` repository secret. Without that secret, CI still builds but does not publish.
 
 ## Structure
 
 ```
 app/src/main/java/com/hectormtzm/liftlog/
   data/       Room entities, DAOs, repositories (plans, workouts, exercises, settings)
+  data/nutrition/  foods, meals, Claude estimator, Open Food Facts client
   timer/      Rest timer state + foreground service (notification, vibration)
-  ui/         Compose screens: plans, workout, exercises, history, settings
+  ui/         Compose screens: plans, workout, exercises, history, nutrition, settings
 ```
-
-The database is designed so food tracking can be added later as its own set of tables and a new tab.

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +46,10 @@ import com.hectormtzm.liftlog.LiftlogApp
 import com.hectormtzm.liftlog.ui.exercises.ExerciseDetailScreen
 import com.hectormtzm.liftlog.ui.exercises.ExerciseLibraryScreen
 import com.hectormtzm.liftlog.ui.exercises.PickMode
+import com.hectormtzm.liftlog.data.nutrition.MealType
+import com.hectormtzm.liftlog.ui.nutrition.AddFoodScreen
+import com.hectormtzm.liftlog.ui.nutrition.MealEditorScreen
+import com.hectormtzm.liftlog.ui.nutrition.NutritionScreen
 import com.hectormtzm.liftlog.ui.history.HistoryScreen
 import com.hectormtzm.liftlog.ui.history.SessionDetailScreen
 import com.hectormtzm.liftlog.ui.plans.PlanEditScreen
@@ -63,6 +68,10 @@ object Routes {
     fun session(id: Long) = "session/$id"
     fun exercise(id: String) = "exercise/${Uri.encode(id)}"
     fun picker(mode: PickMode, targetId: Long) = "picker/${mode.name}/$targetId"
+    const val NUTRITION = "nutrition"
+    const val ADD_FOOD_PATTERN = "addFood/{day}/{type}/{mealId}"
+    fun addFood(day: Long, type: MealType, mealId: Long) = "addFood/$day/${type.name}/$mealId"
+    fun meal(id: Long) = "meal/$id"
 }
 
 private data class TopDest(val route: String, val label: String, val icon: ImageVector)
@@ -71,6 +80,7 @@ private val topDestinations = listOf(
     TopDest(Routes.PLANS, "Plans", Icons.Outlined.FitnessCenter),
     TopDest(Routes.HISTORY, "History", Icons.Outlined.History),
     TopDest(Routes.EXERCISES, "Exercises", Icons.AutoMirrored.Outlined.MenuBook),
+    TopDest(Routes.NUTRITION, "Nutrition", Icons.Outlined.Restaurant),
 )
 
 @Composable
@@ -122,6 +132,22 @@ fun LiftlogRoot(openWorkoutRequests: Int) {
             composable(Routes.EXERCISES) { ExerciseLibraryScreen(nav, PickMode.BROWSE, -1L) }
             composable(Routes.SETTINGS) { SettingsScreen(nav) }
             composable(Routes.WORKOUT) { WorkoutScreen(nav) }
+            composable(Routes.NUTRITION) { NutritionScreen(nav) }
+            composable(
+                Routes.ADD_FOOD_PATTERN,
+                arguments = listOf(
+                    navArgument("day") { type = NavType.LongType },
+                    navArgument("type") { type = NavType.StringType },
+                    navArgument("mealId") { type = NavType.LongType },
+                ),
+            ) { e ->
+                val a = e.arguments!!
+                AddFoodScreen(nav, a.getLong("day"), MealType.parse(a.getString("type")!!), a.getLong("mealId"))
+            }
+            composable(
+                "meal/{mealId}",
+                arguments = listOf(navArgument("mealId") { type = NavType.LongType }),
+            ) { e -> MealEditorScreen(nav, e.arguments!!.getLong("mealId")) }
             composable(
                 "plan/{planId}",
                 arguments = listOf(navArgument("planId") { type = NavType.LongType }),

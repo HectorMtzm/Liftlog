@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.hectormtzm.liftlog.data.WeightUnit
 import com.hectormtzm.liftlog.ui.LiftlogRoot
@@ -45,6 +46,12 @@ class ScreenshotTest {
         File(outDir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
+    private fun settle() = repeat(30) {
+        rule.mainClock.advanceTimeBy(50)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(50))
+        Thread.sleep(30)
+    }
+
     private fun back() {
         repeat(20) { rule.mainClock.advanceTimeBy(50); Thread.sleep(10) }
         rule.onAllNodesWithContentDescription("Back")[0].performClick()
@@ -60,6 +67,7 @@ class ScreenshotTest {
         while (!condition()) {
             if (System.currentTimeMillis() > end) { shot("zz_timeout"); error("timed out") }
             rule.mainClock.advanceTimeBy(50)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(50))
             Thread.sleep(20)
         }
     }
@@ -135,5 +143,64 @@ class ScreenshotTest {
         rule.onNodeWithText("Exercises", useUnmergedTree = true).performClick()
         waitText("Search")
         shot("08_library")
+    }
+
+    @Test
+    fun captureNutrition() {
+        runBlocking {
+            val n = c.nutrition
+            val today = java.time.LocalDate.now().toEpochDay()
+            val egg = com.hectormtzm.liftlog.data.nutrition.FoodEntity(
+                id = "usda_t1", name = "Egg, whole, cooked, scrambled", source = "usda",
+                kcal100 = 149.0, protein100 = 10.0, carbs100 = 1.6, fat100 = 11.0, portions = "1 large=61.0",
+            )
+            val bread = egg.copy(id = "usda_t2", name = "Bread, whole-wheat, toasted", kcal100 = 306.0, protein100 = 12.5,
+                carbs100 = 51.0, fat100 = 4.3, portions = "1 slice=28.0")
+            val yogurt = egg.copy(id = "usda_t3", name = "Yogurt, Greek, plain, nonfat", kcal100 = 59.0, protein100 = 10.3,
+                carbs100 = 3.6, fat100 = 0.4, portions = "1 container (170 g)=170.0")
+            listOf(egg, bread, yogurt).forEach { n.saveFood(it) }
+            val B = com.hectormtzm.liftlog.data.nutrition.MealType.BREAKFAST
+            n.addFood(today, B, null, egg, 2.0, "1 large", 61.0)
+            n.addFood(today, B, null, bread, 2.0, "1 slice", 28.0)
+            n.addFood(today, com.hectormtzm.liftlog.data.nutrition.MealType.SNACK, null, yogurt, 1.0, "1 container (170 g)", 170.0)
+            n.saveEstimate(
+                today, com.hectormtzm.liftlog.data.nutrition.MealType.LUNCH, null,
+                com.hectormtzm.liftlog.data.nutrition.MealEstimate(
+                    "Chicken burrito bowl",
+                    listOf(
+                        com.hectormtzm.liftlog.data.nutrition.EstimatedItem("Grilled chicken breast", 150.0, "g", 1.0, 248.0, 46.5, 0.0, 5.4),
+                        com.hectormtzm.liftlog.data.nutrition.EstimatedItem("White rice, cooked", 1.0, "cup", 158.0, 205.0, 4.3, 44.5, 0.4),
+                        com.hectormtzm.liftlog.data.nutrition.EstimatedItem("Black beans", 0.5, "cup", 172.0, 114.0, 7.6, 20.4, 0.5),
+                        com.hectormtzm.liftlog.data.nutrition.EstimatedItem("Guacamole", 2.0, "tbsp", 15.0, 50.0, 0.6, 2.6, 4.4),
+                        com.hectormtzm.liftlog.data.nutrition.EstimatedItem("Pico de gallo", 0.25, "cup", 40.0, 7.0, 0.3, 1.5, 0.0),
+                    ),
+                    "Rice portion is the biggest uncertainty.",
+                ),
+                "text", null,
+            )
+        }
+        rule.mainClock.autoAdvance = false
+        rule.setContent { LiftlogTheme { LiftlogRoot(openWorkoutRequests = 0) } }
+        waitText("Nutrition")
+        rule.onNodeWithText("Nutrition", useUnmergedTree = true).performClick()
+        waitText("Chicken burrito bowl")
+        shot("10_nutrition_day")
+
+        rule.onNodeWithText("Chicken burrito bowl", useUnmergedTree = true).performClick()
+        waitText("Grilled chicken breast")
+        settle()
+        shot("11_meal_editor")
+        back()
+
+        waitText("Log food")
+        repeat(20) { rule.mainClock.advanceTimeBy(50); Thread.sleep(10) }
+        rule.onNodeWithText("Log food", useUnmergedTree = true).performClick()
+        waitText("Search foods")
+        shot("12_add_food_recent")
+        repeat(20) { rule.mainClock.advanceTimeBy(50); Thread.sleep(10) }
+        rule.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("egg")
+        settle()
+        shot("13_add_food_search")
+
     }
 }
