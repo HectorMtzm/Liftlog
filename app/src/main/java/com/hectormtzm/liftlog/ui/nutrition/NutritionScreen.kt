@@ -185,10 +185,7 @@ private fun MealCard(m: MealFull, onClick: () -> Unit) {
                         Spacer(Modifier.width(4.dp))
                     }
                     Text(
-                        m.meal.name.ifBlank {
-                            m.sortedItems.map { it.name.substringBefore(',').substringBefore(" (") }
-                                .distinct().joinToString(", ").ifBlank { "Meal" }
-                        },
+                        m.title,
                         style = MaterialTheme.typography.titleSmall,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),

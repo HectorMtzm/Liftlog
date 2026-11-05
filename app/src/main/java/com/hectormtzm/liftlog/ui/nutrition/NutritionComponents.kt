@@ -369,3 +369,69 @@ fun BusyOverlay(message: String) {
     }
 }
 
+
+/** Pick a meal logged before to add it again. */
+@Composable
+fun PastMealsDialog(
+    meals: List<com.hectormtzm.liftlog.data.nutrition.MealFull>,
+    onDismiss: () -> Unit,
+    onPick: (Long) -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val shown = remember(meals, query) {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) meals
+        else meals.filter { m -> m.title.lowercase().contains(q) || m.items.any { it.name.lowercase().contains(q) } }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add a past meal") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("Search past meals") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(8.dp))
+                if (shown.isEmpty()) {
+                    Text(
+                        if (meals.isEmpty()) "No meals logged yet." else "No past meals match.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp),
+                    )
+                } else androidx.compose.foundation.lazy.LazyColumn(Modifier.height(380.dp)) {
+                    items(shown.size, key = { shown[it].meal.id }) { i ->
+                        val m = shown[i]
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onPick(m.meal.id) }
+                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    m.title, style = MaterialTheme.typography.titleSmall,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                                )
+                                Text("${kcalText(m.macros.kcal)} kcal", style = MaterialTheme.typography.labelLarge)
+                            }
+                            Text(
+                                dayTitle(m.meal.epochDay) + "  ·  " +
+                                    m.sortedItems.joinToString(", ") { "${amountText(it.quantity, it.unit)} ${it.name.substringBefore(',')}" },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
+}

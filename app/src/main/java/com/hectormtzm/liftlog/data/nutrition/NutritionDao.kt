@@ -48,6 +48,10 @@ interface NutritionDao {
     @Query("SELECT * FROM meals WHERE id = :id")
     suspend fun getMeal(id: Long): MealFull?
 
+    @Transaction
+    @Query("SELECT * FROM meals ORDER BY epochDay DESC, createdAt DESC LIMIT :limit")
+    suspend fun recentMeals(limit: Int): List<MealFull>
+
     @Query("SELECT * FROM meals WHERE epochDay = :epochDay AND mealType = :mealType AND source = 'manual' ORDER BY createdAt LIMIT 1")
     suspend fun manualMeal(epochDay: Long, mealType: String): MealEntity?
 

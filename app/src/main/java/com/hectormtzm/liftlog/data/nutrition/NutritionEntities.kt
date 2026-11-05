@@ -16,6 +16,7 @@ object Source {
     const val MANUAL = "manual"    // meal built by searching foods
     const val PHOTO = "photo"
     const val TEXT = "text"
+    const val COPY = "copy"      // meal re-added from a past meal
 }
 
 enum class MealType(val label: String) {
@@ -117,6 +118,12 @@ data class MealFull(
 ) {
     val sortedItems: List<MealItemEntity> get() = items.sortedBy { it.position }
     val macros: Macros get() = items.fold(Macros.ZERO) { acc, i -> acc + i.macros }
+
+    /** The meal's name, or its foods ("Egg, Bread") when it has none. */
+    val title: String
+        get() = meal.name.ifBlank {
+            sortedItems.map { it.name.substringBefore(',').substringBefore(" (") }.distinct().joinToString(", ").ifBlank { "Meal" }
+        }
 }
 
 data class Macros(val kcal: Double, val protein: Double, val carbs: Double, val fat: Double) {

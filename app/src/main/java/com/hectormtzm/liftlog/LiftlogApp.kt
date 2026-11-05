@@ -22,7 +22,7 @@ class AppContainer(val app: Application) {
     val plans = PlanRepository(db, settings)
     val workouts = WorkoutRepository(db, settings)
     val apiKey = ApiKeyStore(app)
-    val nutrition = NutritionRepository(app, db, MealPhotos(app), ClaudeNutrition({ apiKey.key.value }))
+    val nutrition = NutritionRepository(app, db, MealPhotos(app), ClaudeNutrition({ apiKey.key.value }, { settings.current().claudeModel }))
 }
 
 class LiftlogApp : Application() {

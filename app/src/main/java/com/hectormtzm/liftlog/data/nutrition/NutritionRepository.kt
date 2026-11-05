@@ -123,6 +123,24 @@ class NutritionRepository(
         }
     }
 
+    /** Past meals for re-adding, newest first, without repeats of the same foods and amounts. */
+    suspend fun pastMeals(limit: Int = 300): List<MealFull> =
+        dao.recentMeals(limit)
+            .filter { it.items.isNotEmpty() }
+            .distinctBy { m -> m.title.lowercase() to m.sortedItems.map { it.name.lowercase() to it.quantity } }
+
+    /** Copies a past meal's items into a new meal (or into [targetMealId]). Returns the meal id. */
+    suspend fun copyMeal(sourceMealId: Long, epochDay: Long, mealType: MealType, targetMealId: Long?): Long = db.withTransaction {
+        val src = dao.getMeal(sourceMealId) ?: error("meal not found")
+        val mealId = targetMealId ?: dao.insertMeal(
+            MealEntity(epochDay = epochDay, mealType = mealType.name, name = src.meal.name, source = Source.COPY, notes = src.meal.notes)
+        )
+        var pos = dao.maxItemPosition(mealId)
+        src.sortedItems.forEach { dao.insertItem(it.copy(id = 0, mealId = mealId, position = ++pos)) }
+        src.items.mapNotNull { it.foodId }.distinct().forEach { dao.touchFood(it, System.currentTimeMillis()) }
+        mealId
+    }
+
     suspend fun updateItem(item: MealItemEntity) = dao.updateItem(item)
     suspend fun deleteItem(id: Long) = dao.deleteItem(id)
     suspend fun getMeal(id: Long) = dao.getMeal(id)

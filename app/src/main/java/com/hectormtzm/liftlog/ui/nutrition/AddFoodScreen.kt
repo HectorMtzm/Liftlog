@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.QrCodeScanner
@@ -206,6 +207,15 @@ class AddFoodViewModel(
         }
     }
 
+    val pastMeals = MutableStateFlow<List<com.hectormtzm.liftlog.data.nutrition.MealFull>?>(null)
+
+    fun loadPastMeals() = viewModelScope.launch { pastMeals.value = repo.pastMeals() }
+
+    fun copyMeal(id: Long) = viewModelScope.launch {
+        pastMeals.value = null
+        _openMeal.tryEmit(repo.copyMeal(id, epochDay, mealType.value, targetMealId))
+    }
+
     fun newCaptureUri(context: android.content.Context): Uri =
         FileProvider.getUriForFile(context, context.packageName + ".fileprovider", repo.photos.newCaptureFile())
 }
@@ -228,6 +238,7 @@ fun AddFoodScreen(nav: NavController, epochDay: Long, mealType: MealType, target
     val pendingPhoto by vm.pendingPhoto.collectAsState()
     val portionFor by vm.portionFor.collectAsState()
     val apiKey by vm.hasApiKey.collectAsState()
+    val pastMeals by vm.pastMeals.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     var describe by remember { mutableStateOf<String?>(null) }
     var custom by remember { mutableStateOf<String?>(null) }
@@ -286,7 +297,7 @@ fun AddFoodScreen(nav: NavController, epochDay: Long, mealType: MealType, target
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Box(Modifier.weight(1f)) {
                     QuickAction(Icons.Outlined.CameraAlt, "Photo") { requireKey { photoMenu = true } }
@@ -318,6 +329,7 @@ fun AddFoodScreen(nav: NavController, epochDay: Long, mealType: MealType, target
                 QuickAction(Icons.Outlined.AutoAwesome, "Describe", Modifier.weight(1f)) {
                     requireKey { describe = query }
                 }
+                QuickAction(Icons.Outlined.History, "Past meal", Modifier.weight(1f)) { vm.loadPastMeals() }
             }
             OutlinedTextField(
                 value = query,
@@ -402,6 +414,9 @@ fun AddFoodScreen(nav: NavController, epochDay: Long, mealType: MealType, target
             dismissButton = { TextButton(onClick = { needKey = false }) { Text("Cancel") } },
         )
     }
+    pastMeals?.let { list ->
+        PastMealsDialog(list, onDismiss = { vm.pastMeals.value = null }, onPick = { vm.copyMeal(it) })
+    }
     busy?.let { BusyOverlay(it) }
 }
 
@@ -416,7 +431,7 @@ private fun QuickAction(icon: ImageVector, label: String, modifier: Modifier = M
         Column(Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(4.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
         }
     }
 }

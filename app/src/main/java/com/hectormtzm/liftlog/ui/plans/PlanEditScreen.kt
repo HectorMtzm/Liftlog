@@ -209,6 +209,7 @@ private fun PlanExerciseCard(
     var menu by remember { mutableStateOf(false) }
     var restPicker by remember { mutableStateOf(false) }
     var setAll by remember { mutableStateOf(false) }
+    var rename by remember { mutableStateOf(false) }
     val sets = pe.sets.sortedBy { it.position }
 
     Card(
@@ -225,12 +226,15 @@ private fun PlanExerciseCard(
                         .clickable(onClick = onOpenExercise)
                 ) {
                     Text(
-                        pe.exercise?.name ?: "Deleted exercise",
+                        pe.displayName,
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        pe.exercise?.primaryMuscleList?.joinToString(", ")?.titleCase() ?: "",
+                        listOfNotNull(
+                            pe.exercise?.name?.takeIf { pe.item.customName != null },
+                            pe.exercise?.primaryMuscleList?.joinToString(", ")?.titleCase(),
+                        ).filter { it.isNotBlank() }.joinToString("  ·  "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -239,6 +243,7 @@ private fun PlanExerciseCard(
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Exercise options") }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("Set all sets...") }, onClick = { menu = false; setAll = true })
+                        DropdownMenuItem(text = { Text("Rename exercise") }, onClick = { menu = false; rename = true })
                         if (!isFirst) DropdownMenuItem(text = { Text("Move up") }, onClick = { menu = false; vm.move(pe.item.id, -1) })
                         if (!isLast) DropdownMenuItem(text = { Text("Move down") }, onClick = { menu = false; vm.move(pe.item.id, 1) })
                         DropdownMenuItem(text = { Text("Remove from plan") }, onClick = { menu = false; vm.removeExercise(pe.item.id) })
@@ -288,6 +293,14 @@ private fun PlanExerciseCard(
         }
     }
 
+    if (rename) {
+        RenameExerciseDialog(
+            current = pe.item.customName ?: pe.exercise?.name.orEmpty(),
+            original = pe.exercise?.name.orEmpty(),
+            onDismiss = { rename = false },
+            onSave = { rename = false; vm.renameExercise(pe.item.id, if (it.trim() == pe.exercise?.name) "" else it) },
+        )
+    }
     if (restPicker) {
         RestPickerDialog(
             current = pe.item.restSeconds,
@@ -349,3 +362,32 @@ fun HeaderText(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+
+@Composable
+private fun RenameExerciseDialog(current: String, original: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var text by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename exercise") },
+        text = {
+            Column {
+                androidx.compose.material3.OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Name in this plan") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    "Only the name changes. Instructions, history and records still come from \"$original\".",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                if (text != original) TextButton(onClick = { text = original }) { Text("Use original name") }
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(text) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}

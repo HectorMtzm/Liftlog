@@ -51,6 +51,7 @@ class PlanEditViewModel(private val c: AppContainer, val planId: Long) : ViewMod
     fun removeExercise(id: Long) = viewModelScope.launch { c.plans.removeExercise(id) }
     fun move(id: Long, delta: Int) = viewModelScope.launch { c.plans.moveExercise(planId, id, delta) }
     fun setRest(id: Long, seconds: Int) = viewModelScope.launch { c.plans.setRest(id, seconds) }
+    fun renameExercise(id: Long, name: String) = viewModelScope.launch { c.plans.renameExercise(id, name) }
     fun updateSet(set: PlanSetEntity) = viewModelScope.launch { c.plans.updateSet(set) }
     fun addSet(planExerciseId: Long) = viewModelScope.launch { c.plans.addSet(planExerciseId) }
     fun removeSet(setId: Long) = viewModelScope.launch { c.plans.removeSet(setId) }

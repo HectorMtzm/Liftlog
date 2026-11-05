@@ -45,6 +45,11 @@ import androidx.navigation.NavController
 import com.hectormtzm.liftlog.AppContainer
 import com.hectormtzm.liftlog.BuildConfig
 import com.hectormtzm.liftlog.data.NutritionGoals
+import com.hectormtzm.liftlog.data.ClaudeModel
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import com.hectormtzm.liftlog.data.Settings
 import com.hectormtzm.liftlog.data.WeightUnit
 import com.hectormtzm.liftlog.ui.appViewModel
@@ -63,6 +68,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun setRest(s: Int) = viewModelScope.launch { c.settings.setDefaultRest(s) }
     fun setUpdatePlan(v: Boolean) = viewModelScope.launch { c.settings.setUpdatePlanWeights(v) }
     fun setGoals(g: NutritionGoals) = viewModelScope.launch { c.settings.setGoals(g) }
+    fun setModel(m: ClaudeModel) = viewModelScope.launch { c.settings.setClaudeModel(m) }
     val apiKey: StateFlow<String> = c.apiKey.key
     fun setApiKey(k: String) = c.apiKey.set(k)
 }
@@ -113,8 +119,8 @@ fun SettingsScreen(nav: NavController) {
                 Text(formatRest(s.defaultRestSeconds), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             }
             SettingRow(
-                "Update plan weights",
-                "After finishing a workout, save the weights you lifted as the plan's new targets",
+                "Sync workouts to plan",
+                "When you finish, sets you added or deleted and rest changes are saved to the plan, and weights go up when you lifted more",
                 onClick = { vm.setUpdatePlan(!s.updatePlanWeights) },
             ) {
                 Switch(checked = s.updatePlanWeights, onCheckedChange = vm::setUpdatePlan)
@@ -132,6 +138,28 @@ fun SettingsScreen(nav: NavController) {
                 else "Set (ends in ${apiKey.takeLast(4)}). Stored only on this phone.",
                 onClick = { keyDialog = true },
             ) {}
+            var modelMenu by remember { mutableStateOf(false) }
+            SettingRow("Claude model", s.claudeModel.note, onClick = { modelMenu = true }) {
+                Box {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(s.claudeModel.label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Filled.ArrowDropDown, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    DropdownMenu(expanded = modelMenu, onDismissRequest = { modelMenu = false }) {
+                        ClaudeModel.entries.forEach { m ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(m.label)
+                                        Text(m.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                },
+                                onClick = { modelMenu = false; vm.setModel(m) },
+                            )
+                        }
+                    }
+                }
+            }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             SectionLabel("About")
             SettingRow("Liftlog", "Version ${BuildConfig.VERSION_NAME}") {}

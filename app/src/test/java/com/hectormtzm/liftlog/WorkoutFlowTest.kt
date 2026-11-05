@@ -96,4 +96,53 @@ class WorkoutFlowTest {
         assertEquals("62.5", WeightUnit.formatNumber(62.5))
         assertEquals("100", WeightUnit.formatNumber(100.0))
     }
+
+    @Test
+    fun workoutChangesSyncToPlan() = runBlocking {
+        c.db.exerciseDao().upsert(ExerciseEntity(id = "press", name = "Leg Press", primaryMuscles = "quadriceps"))
+        val lb = WeightUnit.LB
+        val planId = c.plans.createPlan("Legs")
+        c.plans.addExercises(planId, listOf("press"))
+        val pe = c.plans.observeExercises(planId).first().single()
+        c.plans.applyToAllSets(pe.item.id, 3, 10, lb.toKg(200.0))
+        c.plans.setRest(pe.item.id, 120)
+        c.plans.renameExercise(pe.item.id, "Single leg leg press")
+
+        val w = c.workouts.startFromPlan(planId)
+        var we = c.workouts.observeExercises(w).first().single()
+        assertEquals("Single leg leg press", we.displayName)
+        assertEquals("Leg Press", we.exercise!!.name)
+        val (s1, s2, s3) = we.sets.sortedBy { it.position }
+        c.workouts.removeSet(s2.id)                                   // deleted -> removed from plan
+        c.workouts.updateSet(s1.id, 10, lb.toKg(180.0))               // lighter -> plan keeps 200
+        c.workouts.toggleSet(s1.id)
+        // s3 skipped -> stays in plan at 200
+        c.workouts.addSet(we.item.id)                                 // added -> appended to plan
+        we = c.workouts.observeExercises(w).first().single()
+        val added = we.sets.maxBy { it.position }
+        c.workouts.updateSet(added.id, 8, lb.toKg(230.0))             // heavier -> 230
+        c.workouts.toggleSet(added.id)
+        c.workouts.setRest(we.item.id, 90)
+        assertTrue(c.workouts.finish(w))
+
+        val plan = c.plans.observeExercises(planId).first().single()
+        assertEquals(90, plan.item.restSeconds)
+        val sets = plan.sets.sortedBy { it.position }
+        assertEquals(listOf("200", "200", "230"), sets.map { lb.format(it.weightKg) })
+        assertEquals(listOf(10, 10, 8), sets.map { it.reps })
+        assertEquals("Single leg leg press", plan.displayName)
+
+        // Heavier on an existing set raises it; the next workout links to the new plan sets.
+        val w2 = c.workouts.startFromPlan(planId)
+        val first = c.workouts.observeExercises(w2).first().single().sets.minBy { it.position }
+        c.workouts.updateSet(first.id, 10, lb.toKg(210.0))
+        c.workouts.toggleSet(first.id)
+        c.workouts.finish(w2)
+        val after = c.plans.observeExercises(planId).first().single().sets.sortedBy { it.position }
+        assertEquals(listOf("210", "200", "230"), after.map { lb.format(it.weightKg) })
+
+        // Clearing the custom name restores the original.
+        c.plans.renameExercise(pe.item.id, "")
+        assertEquals("Leg Press", c.plans.observeExercises(planId).first().single().displayName)
+    }
 }

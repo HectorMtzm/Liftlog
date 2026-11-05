@@ -61,6 +61,8 @@ data class PlanExerciseEntity(
     val position: Int,
     val restSeconds: Int,
     val notes: String = "",
+    /** Optional name shown instead of the exercise's own (e.g. "Single leg leg press"). */
+    val customName: String? = null,
 )
 
 /** A target set inside a plan. Weight is always stored in kilograms. */
@@ -110,6 +112,8 @@ data class WorkoutExerciseEntity(
     val planExerciseId: Long?,
     val position: Int,
     val restSeconds: Int,
+    /** Copied from the plan exercise when the workout starts. */
+    val customName: String? = null,
 )
 
 /** A performed (or pending) set. Weight is always stored in kilograms. */
@@ -132,6 +136,8 @@ data class WorkoutSetEntity(
     val completed: Boolean = false,
     val completedAt: Long? = null,
     val isPr: Boolean = false,
+    /** The plan set this came from; null for sets added during the workout. */
+    val planSetId: Long? = null,
 )
 
 data class PlanExerciseFull(
@@ -140,7 +146,9 @@ data class PlanExerciseFull(
     val exercise: ExerciseEntity?,
     @Relation(parentColumn = "id", entityColumn = "planExerciseId")
     val sets: List<PlanSetEntity>,
-)
+) {
+    val displayName: String get() = item.customName?.takeIf { it.isNotBlank() } ?: exercise?.name ?: "Deleted exercise"
+}
 
 data class WorkoutExerciseFull(
     @Embedded val item: WorkoutExerciseEntity,
@@ -148,7 +156,9 @@ data class WorkoutExerciseFull(
     val exercise: ExerciseEntity?,
     @Relation(parentColumn = "id", entityColumn = "workoutExerciseId")
     val sets: List<WorkoutSetEntity>,
-)
+) {
+    val displayName: String get() = item.customName?.takeIf { it.isNotBlank() } ?: exercise?.name ?: "Deleted exercise"
+}
 
 data class PlanSummary(
     val id: Long,

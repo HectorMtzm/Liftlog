@@ -188,7 +188,7 @@ class NutritionTest {
         )
         server.start()
         try {
-            val claude = ClaudeNutrition({ "sk-ant-test" }, server.url("/").toString().trimEnd('/'))
+            val claude = ClaudeNutrition({ "sk-ant-test" }, baseUrl = server.url("/").toString().trimEnd('/'))
             val est = claude.estimateFromPhoto(byteArrayOf(1, 2, 3), "cooked in butter")
             assertEquals("Toast", est.items.single().name)
 
@@ -215,6 +215,65 @@ class NutritionTest {
         } finally {
             server.shutdown()
         }
+    }
+
+    @Test
+    fun selectedModelIsUsedAndHaikuSkipsFallbacks() = runBlocking {
+        val server = MockWebServer()
+        fun reply() = MockResponse().setHeader("Content-Type", "application/json").setBody(
+            JSONObject().put("id", "m").put("type", "message").put("role", "assistant").put("model", "x")
+                .put("content", org.json.JSONArray().put(JSONObject().put("type", "text").put("text", """{"meal_name":"","items":[],"notes":"none"}""")))
+                .put("stop_reason", "end_turn").put("stop_sequence", JSONObject.NULL)
+                .put("usage", JSONObject().put("input_tokens", 1).put("output_tokens", 1)).toString()
+        )
+        server.enqueue(reply()); server.enqueue(reply())
+        server.start()
+        try {
+            val url = server.url("/").toString().trimEnd('/')
+            ClaudeNutrition({ "k" }, { com.hectormtzm.liftlog.data.ClaudeModel.HAIKU }, url).estimateFromText("tea")
+            val haiku = server.takeRequest()
+            val hb = JSONObject(haiku.body.readUtf8())
+            assertEquals("claude-haiku-5-5", hb.getString("model"))
+            assertTrue(!hb.has("fallbacks"))
+            assertTrue(haiku.getHeader("anthropic-beta")?.contains("server-side-fallback") != true)
+
+            ClaudeNutrition({ "k" }, { com.hectormtzm.liftlog.data.ClaudeModel.SONNET }, url).estimateFromText("tea")
+            val sb = JSONObject(server.takeRequest().body.readUtf8())
+            assertEquals("claude-sonnet-5-5", sb.getString("model"))
+            assertEquals("default", sb.getString("fallbacks"))
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
+    fun pastMealsCanBeReAdded() = runBlocking {
+        val est = MealEstimate("Oatmeal", listOf(EstimatedItem("Oats", 1.0, "cup", 80.0, 300.0, 10.0, 54.0, 5.0)), "")
+        val first = repo.saveEstimate(20010L, MealType.BREAKFAST, null, est, Source.TEXT, null)
+        repo.saveEstimate(20011L, MealType.BREAKFAST, null, est, Source.TEXT, null) // same meal again
+        val past = repo.pastMeals()
+        assertEquals("duplicates collapse", 1, past.count { it.title == "Oatmeal" })
+
+        val copy = repo.copyMeal(first, 20020L, MealType.DINNER, null)
+        val m = repo.observeMeal(copy).first()!!
+        assertEquals("Oatmeal", m.meal.name)
+        assertEquals(MealType.DINNER.name, m.meal.mealType)
+        assertEquals(20020L, m.meal.epochDay)
+        near(300.0, m.macros.kcal)
+        // Editing the copy leaves the original alone.
+        repo.updateItem(m.items.single().copy(quantity = 2.0))
+        near(300.0, repo.observeMeal(first).first()!!.macros.kcal)
+    }
+
+    @Test
+    fun migratesV2ToV3() {
+        migrations.createDatabase("mig3.db", 2).apply {
+            execSQL("INSERT INTO plans (id, name, notes, position, createdAt) VALUES (1, 'Push', '', 0, 0)")
+            execSQL("INSERT INTO plan_exercises (id, planId, exerciseId, position, restSeconds, notes) VALUES (1, 1, 'x', 0, 90, '')")
+            close()
+        }
+        val db = migrations.runMigrationsAndValidate("mig3.db", 3, true)
+        db.query("SELECT customName FROM plan_exercises").use { c -> c.moveToFirst(); assertTrue(c.isNull(0)) }
     }
 
     @Test

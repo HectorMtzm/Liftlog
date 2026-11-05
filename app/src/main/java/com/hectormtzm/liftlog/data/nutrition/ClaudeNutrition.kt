@@ -1,6 +1,7 @@
 package com.hectormtzm.liftlog.data.nutrition
 
 import com.anthropic.client.AnthropicClient
+import com.hectormtzm.liftlog.data.ClaudeModel
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
 import com.anthropic.errors.AnthropicIoException
@@ -42,6 +43,7 @@ class NutritionAiException(message: String) : Exception(message)
  */
 class ClaudeNutrition(
     private val apiKey: () -> String,
+    private val model: suspend () -> ClaudeModel = { ClaudeModel.OPUS },
     private val baseUrl: String? = null, // tests only
 ) {
 
@@ -90,6 +92,7 @@ class ClaudeNutrition(
     private suspend fun request(content: List<BetaContentBlockParam>): MealEstimate = withContext(Dispatchers.IO) {
         val key = apiKey()
         if (key.isBlank()) throw NutritionAiException("Add your Anthropic API key in Settings to use Claude.")
+        val m = model()
         val client: AnthropicClient = AnthropicOkHttpClient.builder()
             .apiKey(key)
             .timeout(Duration.ofSeconds(120))
@@ -97,8 +100,8 @@ class ClaudeNutrition(
             .apply { if (baseUrl != null) baseUrl(baseUrl) }
             .build()
         try {
-            val params = MessageCreateParams.builder()
-                .model(MODEL)
+            val builder = MessageCreateParams.builder()
+                .model(m.id)
                 .maxTokens(8000L)
                 .system(SYSTEM_PROMPT)
                 .outputConfig(
@@ -107,11 +110,14 @@ class ClaudeNutrition(
                         .format(BetaJsonOutputFormat.builder().schema(schema()).build())
                         .build()
                 )
-                // If a safety classifier declines, retry server-side on a suitable model.
-                .addBeta("server-side-fallback-2026-07-01")
-                .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
                 .addUserMessageOfContentBlockParams(content)
-                .build()
+            // If a safety classifier declines, retry server-side on a suitable model.
+            // Haiku 5.5 has no server-side fallback.
+            if (m != ClaudeModel.HAIKU) {
+                builder.addBeta("server-side-fallback-2026-07-01")
+                    .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
+            }
+            val params = builder.build()
             val response = client.beta().messages().create(params)
             val stop = response.stopReason().orElse(null)
             if (stop == BetaStopReason.REFUSAL) {
@@ -127,7 +133,7 @@ class ClaudeNutrition(
         } catch (e: UnauthorizedException) {
             throw NutritionAiException("Your Anthropic API key was rejected. Check it in Settings.")
         } catch (e: PermissionDeniedException) {
-            throw NutritionAiException("This API key does not have access to $MODEL.")
+            throw NutritionAiException("This API key does not have access to ${m.label}.")
         } catch (e: RateLimitException) {
             throw NutritionAiException("Rate limited by the API. Wait a moment and try again.")
         } catch (e: AnthropicServiceException) {
@@ -143,7 +149,7 @@ class ClaudeNutrition(
     }
 
     companion object {
-        const val MODEL = "claude-opus-5-5"
+        val MODEL = ClaudeModel.OPUS.id
 
         internal val SYSTEM_PROMPT = """
             You estimate nutrition for a food logging app. The person will review and correct your

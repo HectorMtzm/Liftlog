@@ -224,7 +224,7 @@ fun SessionDetailScreen(nav: NavController, workoutId: Long) {
                             ExerciseThumb(we.exercise, size = 40.dp)
                             Spacer(Modifier.width(12.dp))
                             Text(
-                                we.exercise?.name ?: "Deleted exercise",
+                                we.displayName,
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )

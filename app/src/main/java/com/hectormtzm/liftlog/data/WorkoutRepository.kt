@@ -34,10 +34,13 @@ class WorkoutRepository(
                     planExerciseId = pe.item.id,
                     position = index,
                     restSeconds = pe.item.restSeconds,
+                    customName = pe.item.customName,
                 )
             )
             pe.sets.sortedBy { it.position }.forEachIndexed { i, s ->
-                dao.insertSet(WorkoutSetEntity(workoutExerciseId = weId, position = i, reps = s.reps, weightKg = s.weightKg))
+                dao.insertSet(
+                    WorkoutSetEntity(workoutExerciseId = weId, position = i, reps = s.reps, weightKg = s.weightKg, planSetId = s.id)
+                )
             }
         }
         workoutId
@@ -72,7 +75,7 @@ class WorkoutRepository(
     /** Swaps the exercise of a workout entry for another one, keeping the set targets. */
     suspend fun replaceExercise(workoutExerciseId: Long, newExerciseId: String) = db.withTransaction {
         val we = dao.getWorkoutExercise(workoutExerciseId) ?: return@withTransaction
-        dao.updateWorkoutExercises(listOf(we.copy(exerciseId = newExerciseId, planExerciseId = null)))
+        dao.updateWorkoutExercises(listOf(we.copy(exerciseId = newExerciseId, planExerciseId = null, customName = null)))
         dao.getSets(workoutExerciseId).forEach { if (it.isPr) dao.updateSet(it.copy(isPr = false)) }
     }
 
@@ -150,28 +153,43 @@ class WorkoutRepository(
      * and the workout was discarded.
      */
     suspend fun finish(workoutId: Long): Boolean = db.withTransaction {
-        dao.deleteIncompleteSets(workoutId)
-        dao.deleteEmptyExercises(workoutId)
-        val exercises = dao.getExercises(workoutId)
         val workout = dao.getWorkout(workoutId) ?: return@withTransaction false
-        if (exercises.isEmpty()) {
+        val all = dao.getExercises(workoutId)
+        if (all.none { we -> we.sets.any { it.completed } }) {
             dao.deleteWorkout(workoutId)
             return@withTransaction false
         }
+        // Sync before dropping unfinished sets, so skipped sets stay in the plan.
+        if (settings.current().updatePlanWeights) all.forEach { syncToPlan(it) }
+        dao.deleteIncompleteSets(workoutId)
+        dao.deleteEmptyExercises(workoutId)
         dao.updateWorkout(workout.copy(finishedAt = System.currentTimeMillis()))
-        if (settings.current().updatePlanWeights) {
-            exercises.forEach { we ->
-                val peId = we.item.planExerciseId ?: return@forEach
-                if (planDao.getPlanExercise(peId) == null) return@forEach
-                val planSets = planDao.getSets(peId)
-                val done = we.sets.filter { it.completed }.sortedBy { it.position }
-                planSets.forEachIndexed { i, ps ->
-                    val lifted = done.getOrNull(i) ?: return@forEachIndexed
-                    if (lifted.weightKg != ps.weightKg) planDao.updateSet(ps.copy(weightKg = lifted.weightKg))
-                }
+        true
+    }
+
+    /**
+     * Applies a workout exercise's changes to the plan exercise it came from:
+     * sets added during the workout are added, sets deleted are removed, skipped sets are kept,
+     * rest time is copied, and a weight only changes when more was lifted than planned.
+     * Exercises added, removed or replaced during the workout do not change the plan.
+     */
+    private suspend fun syncToPlan(we: WorkoutExerciseFull) {
+        val peId = we.item.planExerciseId ?: return
+        val pe = planDao.getPlanExercise(peId) ?: return
+        if (pe.restSeconds != we.item.restSeconds) planDao.updatePlanExercises(listOf(pe.copy(restSeconds = we.item.restSeconds)))
+        val planSets = planDao.getSets(peId).associateBy { it.id }
+        val workoutSets = we.sets.sortedBy { it.position }
+        val kept = workoutSets.mapNotNull { it.planSetId }.toSet()
+        planSets.values.filter { it.id !in kept }.forEach { planDao.deleteSet(it.id) }
+        workoutSets.forEachIndexed { i, ws ->
+            val ps = ws.planSetId?.let(planSets::get)
+            if (ps == null) {
+                planDao.insertSet(PlanSetEntity(planExerciseId = peId, position = i, reps = ws.reps, weightKg = ws.weightKg))
+            } else {
+                val weight = if (ws.completed && ws.weightKg > ps.weightKg + 1e-6) ws.weightKg else ps.weightKg
+                if (weight != ps.weightKg || ps.position != i) planDao.updateSet(ps.copy(position = i, weightKg = weight))
             }
         }
-        true
     }
 
     suspend fun discard(workoutId: Long) = dao.deleteWorkout(workoutId)

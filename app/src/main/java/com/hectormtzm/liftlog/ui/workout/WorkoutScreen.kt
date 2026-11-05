@@ -263,7 +263,7 @@ private fun WorkoutExerciseCard(
     var menu by remember { mutableStateOf(false) }
     var restPicker by remember { mutableStateOf(false) }
     val sets = we.sets.sortedBy { it.position }
-    val name = we.exercise?.name ?: "Deleted exercise"
+    val name = we.displayName
     val allDone = sets.isNotEmpty() && sets.all { it.completed }
 
     Card(
@@ -284,6 +284,12 @@ private fun WorkoutExerciseCard(
                         style = MaterialTheme.typography.titleMedium,
                         color = if (allDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
+                    if (we.item.customName != null && we.exercise != null) Text(
+                        we.exercise.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Box {

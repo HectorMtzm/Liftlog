@@ -82,6 +82,7 @@ class ScreenshotTest {
         val pes = c.plans.observeExercises(planId).first()
         c.plans.applyToAllSets(pes[0].item.id, 4, 8, lb.toKg(135.0)); c.plans.setRest(pes[0].item.id, 180)
         c.plans.applyToAllSets(pes[1].item.id, 3, 10, lb.toKg(40.0))
+        c.plans.renameExercise(pes[1].item.id, "Seated DB shoulder press")
         c.plans.applyToAllSets(pes[2].item.id, 3, 12, lb.toKg(50.0)); c.plans.setRest(pes[2].item.id, 60)
 
         // A few past sessions with progression.
