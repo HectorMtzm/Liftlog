@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -331,5 +332,49 @@ fun StatBlock(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier) {
         Text(value, style = MaterialTheme.typography.titleLarge)
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * A scrollable list of options in a dialog. Used instead of a dropdown menu for long lists
+ * (muscles, equipment), which can run off the screen.
+ */
+@Composable
+fun OptionPickerDialog(
+    title: String,
+    options: List<String>,
+    selected: String?,
+    label: (String) -> String,
+    onDismiss: () -> Unit,
+    onPick: (String?) -> Unit,
+    anyLabel: String? = null,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                if (anyLabel != null) item {
+                    OptionRow(anyLabel, selected == null) { onPick(null) }
+                }
+                items(options) { o -> OptionRow(label(o), o == selected) { onPick(o) } }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun OptionRow(text: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Text(text, style = MaterialTheme.typography.bodyLarge)
     }
 }

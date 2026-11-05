@@ -59,6 +59,7 @@ import com.hectormtzm.liftlog.ui.Routes
 import com.hectormtzm.liftlog.ui.appViewModel
 import com.hectormtzm.liftlog.ui.components.EmptyState
 import com.hectormtzm.liftlog.ui.components.ExerciseThumb
+import com.hectormtzm.liftlog.ui.components.OptionPickerDialog
 import com.hectormtzm.liftlog.ui.titleCase
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -251,18 +252,21 @@ private fun DropdownFilterChip(
     onChange: (String?) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    Box {
-        FilterChip(
-            selected = value != null,
-            onClick = { open = true },
-            label = { Text(value?.titleCase() ?: label) },
-            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null) },
+    FilterChip(
+        selected = value != null,
+        onClick = { open = true },
+        label = { Text(value?.titleCase() ?: label) },
+        trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null) },
+    )
+    if (open) {
+        OptionPickerDialog(
+            title = label,
+            options = options,
+            selected = value,
+            label = { it.titleCase() },
+            anyLabel = "Any ${label.lowercase()}",
+            onDismiss = { open = false },
+            onPick = { open = false; onChange(it) },
         )
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text("Any ${label.lowercase()}") }, onClick = { open = false; onChange(null) })
-            options.forEach { o ->
-                DropdownMenuItem(text = { Text(o.titleCase()) }, onClick = { open = false; onChange(o) })
-            }
-        }
     }
 }

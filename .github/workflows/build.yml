@@ -24,7 +24,7 @@ jobs:
         run: python3 tools/build_usda_foods.py
 
       - name: Unit tests
-        run: ./gradlew testDebugUnitTest --tests '*WorkoutFlowTest*' --tests '*NutritionTest*'
+        run: ./gradlew testDebugUnitTest --tests '*WorkoutFlowTest*' --tests '*NutritionTest*' --tests '*PickerUiTest*'
 
       - name: Decrypt signing key
         env:

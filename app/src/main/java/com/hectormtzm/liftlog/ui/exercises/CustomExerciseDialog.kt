@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.hectormtzm.liftlog.data.ExerciseEntity
 import com.hectormtzm.liftlog.data.ExerciseRepository
+import com.hectormtzm.liftlog.ui.components.OptionPickerDialog
 import com.hectormtzm.liftlog.ui.titleCase
 
 @Composable
@@ -74,13 +75,18 @@ fun CustomExerciseDialog(
 @Composable
 private fun Picker(label: String, value: String, options: List<String>, onPick: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
-            Text("$label: ${value.titleCase()}", modifier = Modifier.weight(1f))
-            Icon(Icons.Filled.ArrowDropDown, null)
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            options.forEach { o -> DropdownMenuItem(text = { Text(o.titleCase()) }, onClick = { open = false; onPick(o) }) }
-        }
+    OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
+        Text("$label: ${value.titleCase()}", modifier = Modifier.weight(1f))
+        Icon(Icons.Filled.ArrowDropDown, null)
+    }
+    if (open) {
+        OptionPickerDialog(
+            title = label,
+            options = options,
+            selected = value,
+            label = { it.titleCase() },
+            onDismiss = { open = false },
+            onPick = { open = false; if (it != null) onPick(it) },
+        )
     }
 }
