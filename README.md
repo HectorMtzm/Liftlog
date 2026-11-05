@@ -43,7 +43,7 @@ to your next set. Log what you eat by searching foods, scanning a barcode, descr
   Re-estimate to have Claude recompute them.
 - **Custom foods** with your own macros per serving, and recently used foods for quick re-logging.
 - Goals and your Anthropic API key are set in Settings. The key stays on the phone (excluded from backups).
-  Claude requests use `claude-opus-5-5` with structured JSON output.
+  Claude requests use Haiku 5.5 by default (Sonnet 5.5 or Opus 5.5 selectable in Settings) with structured JSON output.
 
 ## Install
 

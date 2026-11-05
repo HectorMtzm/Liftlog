@@ -17,7 +17,7 @@ data class Settings(
     val defaultRestSeconds: Int = 90,
     val updatePlanWeights: Boolean = true,
     val goals: NutritionGoals = NutritionGoals(),
-    val claudeModel: ClaudeModel = ClaudeModel.OPUS,
+    val claudeModel: ClaudeModel = ClaudeModel.HAIKU,
 )
 
 /** Claude models offered for food estimates. */
@@ -27,7 +27,7 @@ enum class ClaudeModel(val id: String, val label: String, val note: String) {
     HAIKU("claude-haiku-5-5", "Haiku 5.5", "Fastest and cheapest, a fraction of a cent");
 
     companion object {
-        fun parse(s: String?) = entries.firstOrNull { it.name == s } ?: OPUS
+        fun parse(s: String?) = entries.firstOrNull { it.name == s } ?: HAIKU
     }
 }
 
