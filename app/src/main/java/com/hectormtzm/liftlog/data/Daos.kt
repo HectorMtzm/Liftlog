@@ -13,6 +13,13 @@ interface ExerciseDao {
     @Query("SELECT COUNT(*) FROM exercises WHERE id LIKE 'edb_%'")
     suspend fun datasetCount(): Int
 
+    /** Dataset rows stored before translations were bundled. */
+    @Query("SELECT COUNT(*) FROM exercises WHERE id LIKE 'edb_%' AND instructionsByLang IS NULL")
+    suspend fun datasetMissingTranslations(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(items: List<ExerciseEntity>)
+
     @Query("SELECT * FROM exercises WHERE id LIKE 'edb_%'")
     suspend fun datasetExercises(): List<ExerciseEntity>
 

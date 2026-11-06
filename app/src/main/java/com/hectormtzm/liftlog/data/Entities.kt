@@ -26,10 +26,19 @@ data class ExerciseEntity(
     /** Pipe separated relative image paths. */
     val images: String = "",
     val isCustom: Boolean = false,
+    /** JSON object: language code -> newline separated steps (bundled library only). */
+    val instructionsByLang: String? = null,
 ) {
     val primaryMuscleList: List<String> get() = split(primaryMuscles, ',')
     val secondaryMuscleList: List<String> get() = split(secondaryMuscles, ',')
     val instructionList: List<String> get() = split(instructions, '\n')
+
+    /** Steps in [lang] when available, otherwise the default (English) ones. */
+    fun instructionsFor(lang: String): List<String> {
+        val json = instructionsByLang ?: return instructionList
+        val text = runCatching { org.json.JSONObject(json).optString(lang, "") }.getOrDefault("")
+        return split(text, '\n').ifEmpty { instructionList }
+    }
     val imageList: List<String> get() = split(images, '|')
 
     private fun split(s: String, c: Char) = s.split(c).map { it.trim() }.filter { it.isNotEmpty() }

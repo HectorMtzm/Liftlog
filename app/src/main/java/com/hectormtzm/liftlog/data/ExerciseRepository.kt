@@ -28,11 +28,17 @@ class ExerciseRepository(
      */
     suspend fun seedIfNeeded() = withContext(Dispatchers.IO) {
         seedLock.withLock {
-            if (dao.datasetCount() > 0) return@withLock
+            val existing = dao.datasetCount()
+            if (existing > 0 && dao.datasetMissingTranslations() == 0) return@withLock
             val items = parseBundled(context.assets.open("exercises.json").bufferedReader().use { it.readText() })
             db.withTransaction {
-                dao.insertAll(items)
-                migrateLegacy()
+                if (existing > 0) {
+                    // Refresh rows saved by an older version (adds translated instructions).
+                    dao.upsertAll(items)
+                } else {
+                    dao.insertAll(items)
+                    migrateLegacy()
+                }
             }
         }
     }
@@ -119,6 +125,13 @@ class ExerciseRepository(
                 }
                 val id = o.optString("id"); val name = o.optString("name")
                 if (id.isBlank() || name.isBlank()) return@mapNotNull null
+                // "steps" is {lang: [step, ...]}
+                val stepsObj = o.optJSONObject("steps")
+                val byLang = org.json.JSONObject()
+                stepsObj?.keys()?.forEach { lang ->
+                    val a = stepsObj.optJSONArray(lang) ?: return@forEach
+                    byLang.put(lang, (0 until a.length()).joinToString("\n") { a.getString(it) })
+                }
                 ExerciseEntity(
                     id = id,
                     name = name,
@@ -126,7 +139,8 @@ class ExerciseRepository(
                     equipment = o.optString("equipment"),
                     primaryMuscles = o.optString("target"),
                     secondaryMuscles = list("secondary").joinToString(","),
-                    instructions = list("steps").joinToString("\n"),
+                    instructions = byLang.optString("en", ""),
+                    instructionsByLang = byLang.toString(),
                     images = listOf(o.optString("image"), o.optString("gif")).joinToString("|"),
                     isCustom = false,
                 )

@@ -46,6 +46,8 @@ import com.hectormtzm.liftlog.AppContainer
 import com.hectormtzm.liftlog.BuildConfig
 import com.hectormtzm.liftlog.data.NutritionGoals
 import com.hectormtzm.liftlog.data.ClaudeModel
+import com.hectormtzm.liftlog.data.InstructionLanguage
+import com.hectormtzm.liftlog.ui.components.OptionPickerDialog
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.DropdownMenu
@@ -69,6 +71,7 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     fun setUpdatePlan(v: Boolean) = viewModelScope.launch { c.settings.setUpdatePlanWeights(v) }
     fun setGoals(g: NutritionGoals) = viewModelScope.launch { c.settings.setGoals(g) }
     fun setModel(m: ClaudeModel) = viewModelScope.launch { c.settings.setClaudeModel(m) }
+    fun setInstructionLanguage(l: InstructionLanguage?) = viewModelScope.launch { c.settings.setInstructionLanguage(l) }
     val apiKey: StateFlow<String> = c.apiKey.key
     fun setApiKey(k: String) = c.apiKey.set(k)
 }
@@ -124,6 +127,29 @@ fun SettingsScreen(nav: NavController) {
                 onClick = { vm.setUpdatePlan(!s.updatePlanWeights) },
             ) {
                 Switch(checked = s.updatePlanWeights, onCheckedChange = vm::setUpdatePlan)
+            }
+            var langPicker by remember { mutableStateOf(false) }
+            SettingRow(
+                "Instruction language",
+                if (s.instructionLanguage == null) "Automatic (phone language)" else "Exercise how-to steps",
+                onClick = { langPicker = true },
+            ) {
+                Text(
+                    s.effectiveInstructionLanguage.label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (langPicker) {
+                OptionPickerDialog(
+                    title = "Instruction language",
+                    options = InstructionLanguage.entries.map { it.code },
+                    selected = s.instructionLanguage?.code,
+                    label = { code -> InstructionLanguage.byCode(code)!!.label },
+                    anyLabel = "Automatic (phone language)",
+                    onDismiss = { langPicker = false },
+                    onPick = { code -> langPicker = false; vm.setInstructionLanguage(InstructionLanguage.byCode(code)) },
+                )
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             SectionLabel("Nutrition")

@@ -277,6 +277,16 @@ class NutritionTest {
     }
 
     @Test
+    fun migratesV3ToV4() {
+        migrations.createDatabase("mig4.db", 3).apply {
+            execSQL("INSERT INTO exercises (id, name, category, equipment, level, force, mechanic, primaryMuscles, secondaryMuscles, instructions, images, isCustom) VALUES ('edb_0001', '3/4 Sit-Up', '', '', '', '', '', 'abs', '', 'Lie flat', '', 0)")
+            close()
+        }
+        val db = migrations.runMigrationsAndValidate("mig4.db", 4, true)
+        db.query("SELECT instructionsByLang FROM exercises").use { c -> c.moveToFirst(); assertTrue(c.isNull(0)) }
+    }
+
+    @Test
     fun missingKeyGivesFriendlyError() = runBlocking {
         try {
             ClaudeNutrition({ "" }).estimateFromText("2 eggs"); fail()

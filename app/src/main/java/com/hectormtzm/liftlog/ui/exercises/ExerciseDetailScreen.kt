@@ -199,10 +199,11 @@ fun ExerciseDetailScreen(nav: NavController, exerciseId: String) {
                 }
             }
 
-            if (e.instructionList.isNotEmpty()) {
+            val steps = e.instructionsFor(settings.effectiveInstructionLanguage.code)
+            if (steps.isNotEmpty()) {
                 item {
                     SectionCard(if (e.isCustom) "Notes" else "How to") {
-                        e.instructionList.forEachIndexed { i, step ->
+                        steps.forEachIndexed { i, step ->
                             Row(Modifier.padding(vertical = 4.dp)) {
                                 if (!e.isCustom) {
                                     Text(

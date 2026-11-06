@@ -183,4 +183,40 @@ class WorkoutFlowTest {
         c.plans.renameExercise(pe.item.id, "")
         assertEquals("Leg Press", c.plans.observeExercises(planId).first().single().displayName)
     }
+
+    @Test
+    fun instructionsInEveryLanguage() = runBlocking {
+        c.exercises.seedIfNeeded()
+        val sitUp = c.exercises.get("edb_0001")!!
+        assertTrue(sitUp.instructionsFor("es").first().startsWith("Túmbate"))
+        assertTrue(sitUp.instructionsFor("en").first().startsWith("Lie flat"))
+        for (l in com.hectormtzm.liftlog.data.InstructionLanguage.entries) {
+            assertTrue("missing ${l.code}", sitUp.instructionsFor(l.code).isNotEmpty())
+        }
+        // Unknown language and custom exercises fall back to the default steps.
+        assertEquals(sitUp.instructionList, sitUp.instructionsFor("xx"))
+        assertEquals(listOf("Keep elbows in"), ExerciseEntity(id = "c", name = "C", instructions = "Keep elbows in", isCustom = true).instructionsFor("es"))
+
+        // An install that saved the library before translations existed gets them on the next start,
+        // without touching plans that use the exercise.
+        val planId = c.plans.createPlan("P")
+        c.plans.addExercises(planId, listOf("edb_0001"))
+        c.db.exerciseDao().upsert(sitUp.copy(instructionsByLang = null))
+        c.exercises.seedIfNeeded()
+        assertTrue(c.exercises.get("edb_0001")!!.instructionsFor("es").first().startsWith("Túmbate"))
+        assertEquals("edb_0001", c.plans.observeExercises(planId).first().single().item.exerciseId)
+    }
+
+    @Test
+    fun instructionLanguageDefaultsToPhone() {
+        val saved = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale("es", "MX"))
+            assertEquals(com.hectormtzm.liftlog.data.InstructionLanguage.ES, com.hectormtzm.liftlog.data.Settings().effectiveInstructionLanguage)
+            java.util.Locale.setDefault(java.util.Locale("de"))
+            assertEquals(com.hectormtzm.liftlog.data.InstructionLanguage.EN, com.hectormtzm.liftlog.data.Settings().effectiveInstructionLanguage)
+        } finally {
+            java.util.Locale.setDefault(saved)
+        }
+    }
 }

@@ -8,7 +8,7 @@ it at runtime from the dataset's repository by the relative paths kept here.
 Usage:
     python3 tools/build_exercises.py                 # download data/exercises.json
     python3 tools/build_exercises.py --json FILE     # use a local copy
-Output: JSON array of objects with English instructions only.
+Output: JSON array of objects; "steps" maps each language code to its instruction steps.
 """
 import argparse
 import json
@@ -61,9 +61,14 @@ def main():
         data = json.loads(urllib.request.urlopen(req, timeout=300).read())
     out = []
     for r in data:
-        steps = (r.get("instruction_steps") or {}).get("en") or []
-        if not steps and (r.get("instructions") or {}).get("en"):
-            steps = [r["instructions"]["en"]]
+        steps = {}
+        for lang, lst in (r.get("instruction_steps") or {}).items():
+            cleaned = [clean(x) for x in (lst or []) if x and x.strip()]
+            if cleaned:
+                steps[lang] = cleaned
+        for lang, text in (r.get("instructions") or {}).items():
+            if lang not in steps and text and text.strip():
+                steps[lang] = [clean(text)]
         out.append({
             "id": "edb_" + r["id"],
             "name": title(r["name"]),
@@ -71,7 +76,7 @@ def main():
             "equipment": r.get("equipment") or "",
             "target": r.get("target") or "",
             "secondary": [m for m in (r.get("secondary_muscles") or []) if m],
-            "steps": [clean(s) for s in steps if s.strip()],
+            "steps": steps,
             "image": r.get("image") or "",
             "gif": r.get("gif_url") or "",
         })

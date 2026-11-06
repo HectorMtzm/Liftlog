@@ -18,7 +18,12 @@ data class Settings(
     val updatePlanWeights: Boolean = true,
     val goals: NutritionGoals = NutritionGoals(),
     val claudeModel: ClaudeModel = ClaudeModel.HAIKU,
-)
+    /** null = follow the phone's language. */
+    val instructionLanguage: InstructionLanguage? = null,
+) {
+    val effectiveInstructionLanguage: InstructionLanguage
+        get() = instructionLanguage ?: InstructionLanguage.deviceDefault()
+}
 
 /** Claude models offered for food estimates. */
 enum class ClaudeModel(val id: String, val label: String, val note: String) {
@@ -28,6 +33,20 @@ enum class ClaudeModel(val id: String, val label: String, val note: String) {
 
     companion object {
         fun parse(s: String?) = entries.firstOrNull { it.name == s } ?: HAIKU
+    }
+}
+
+/** Languages the exercise instructions are available in. */
+enum class InstructionLanguage(val code: String, val label: String) {
+    EN("en", "English"), ES("es", "Español"), FR("fr", "Français"), IT("it", "Italiano"),
+    PL("pl", "Polski"), TR("tr", "Türkçe"), RU("ru", "Русский"), HI("hi", "हिन्दी"),
+    ZH("zh", "中文"), KO("ko", "한국어");
+
+    companion object {
+        fun byCode(code: String?) = entries.firstOrNull { it.code == code }
+
+        /** The phone's language when supported, else English. */
+        fun deviceDefault(): InstructionLanguage = byCode(java.util.Locale.getDefault().language) ?: EN
     }
 }
 
@@ -47,6 +66,7 @@ class SettingsRepository(private val context: Context) {
     private val carbsKey = intPreferencesKey("goal_carbs")
     private val fatKey = intPreferencesKey("goal_fat")
     private val modelKey = stringPreferencesKey("claude_model")
+    private val langKey = stringPreferencesKey("instruction_language")
 
     val settings: Flow<Settings> = context.dataStore.data.map { p ->
         Settings(
@@ -60,6 +80,7 @@ class SettingsRepository(private val context: Context) {
                 fat = p[fatKey] ?: 70,
             ),
             claudeModel = ClaudeModel.parse(p[modelKey]),
+            instructionLanguage = InstructionLanguage.byCode(p[langKey]),
         )
     }
 
@@ -68,6 +89,9 @@ class SettingsRepository(private val context: Context) {
     suspend fun setUnit(unit: WeightUnit) = context.dataStore.edit { it[unitKey] = unit.name }
     suspend fun setDefaultRest(seconds: Int) = context.dataStore.edit { it[restKey] = seconds }
     suspend fun setUpdatePlanWeights(v: Boolean) = context.dataStore.edit { it[updatePlanKey] = v }
+    suspend fun setInstructionLanguage(l: InstructionLanguage?) = context.dataStore.edit {
+        if (l == null) it.remove(langKey) else it[langKey] = l.code
+    }
     suspend fun setClaudeModel(m: ClaudeModel) = context.dataStore.edit { it[modelKey] = m.name }
     suspend fun setGoals(g: NutritionGoals) = context.dataStore.edit {
         it[kcalKey] = g.kcal; it[proteinKey] = g.protein; it[carbsKey] = g.carbs; it[fatKey] = g.fat
