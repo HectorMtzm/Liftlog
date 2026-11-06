@@ -233,10 +233,7 @@ private fun PlanExerciseCard(
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        listOfNotNull(
-                            pe.exercise?.name?.takeIf { pe.item.customName != null },
-                            pe.exercise?.primaryMuscleList?.joinToString(", ")?.titleCase(),
-                        ).filter { it.isNotBlank() }.joinToString("  ·  "),
+                        pe.exercise?.primaryMuscleList?.joinToString(", ")?.titleCase() ?: "",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -69,7 +69,7 @@ fun RestTimerBar(
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(formatClock((remaining + 999) / 1000), style = TimerTextStyle)
                     Text(
-                        "Rest  ·  ${state.label}",
+                        if (state.label.isNotBlank()) "Next: ${state.label}" else "Last set done",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

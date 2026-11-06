@@ -55,10 +55,12 @@ class WorkoutViewModel(private val c: AppContainer) : ViewModel() {
     val settings: StateFlow<Settings> =
         c.settings.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Settings())
 
-    fun toggleSet(set: WorkoutSetEntity, exerciseName: String) = viewModelScope.launch {
+    fun toggleSet(set: WorkoutSetEntity) = viewModelScope.launch {
+        val exercises = ui.value?.value?.exercises.orEmpty()
         val result = c.workouts.toggleSet(set.id)
         if (result != null && result.restSeconds > 0) {
-            RestTimer.start(app, result.restSeconds, exerciseName)
+            // Label the timer with what comes next, not the exercise just finished.
+            RestTimer.start(app, result.restSeconds, nextUpName(exercises, set.id).orEmpty())
         }
     }
 

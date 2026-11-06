@@ -285,12 +285,6 @@ private fun WorkoutExerciseCard(
                         color = if (allDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
-                    if (we.item.customName != null && we.exercise != null) Text(
-                        we.exercise.name,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
                 }
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Exercise options") }
@@ -319,7 +313,7 @@ private fun WorkoutExerciseCard(
                     previous = previous.getOrNull(index),
                     unit = unit,
                     canRemove = sets.size > 1,
-                    onToggle = { vm.toggleSet(s, name) },
+                    onToggle = { vm.toggleSet(s) },
                     onWeight = { vm.updateSet(s, s.reps, unit.toKg(it)) },
                     onReps = { vm.updateSet(s, it.toInt(), s.weightKg) },
                     onUsePrevious = { p -> vm.updateSet(s, p.reps, p.weightKg) },

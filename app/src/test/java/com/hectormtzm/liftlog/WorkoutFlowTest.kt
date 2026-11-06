@@ -219,4 +219,30 @@ class WorkoutFlowTest {
             java.util.Locale.setDefault(saved)
         }
     }
+
+    @Test
+    fun restTimerNamesWhatComesNext() = runBlocking {
+        c.db.exerciseDao().upsert(ExerciseEntity(id = "a", name = "Squat"))
+        c.db.exerciseDao().upsert(ExerciseEntity(id = "b", name = "Leg Press"))
+        val planId = c.plans.createPlan("Legs")
+        c.plans.addExercises(planId, listOf("a", "b"))
+        c.plans.renameExercise(c.plans.observeExercises(planId).first()[1].item.id, "Single leg leg press")
+        c.plans.observeExercises(planId).first().forEach { c.plans.applyToAllSets(it.item.id, 2, 5, 100.0) }
+        val w = c.workouts.startFromPlan(planId)
+        suspend fun ex() = c.workouts.observeExercises(w).first()
+        val (squat, press) = ex().sortedBy { it.item.position }
+        val s = squat.sets.sortedBy { it.position }
+        val p = press.sets.sortedBy { it.position }
+
+        val nextUp = com.hectormtzm.liftlog.ui.workout.nextUpName(ex(), s[0].id)
+        assertEquals("Squat", nextUp)                                  // squat still has a set left
+        c.workouts.toggleSet(s[0].id)
+        assertEquals("Single leg leg press", com.hectormtzm.liftlog.ui.workout.nextUpName(ex(), s[1].id)) // last squat set -> next exercise
+        c.workouts.toggleSet(s[1].id)
+        c.workouts.toggleSet(p[0].id)
+        assertEquals(null, com.hectormtzm.liftlog.ui.workout.nextUpName(ex(), p[1].id))  // everything done
+        // A skipped earlier set is picked up after the last exercise.
+        c.workouts.toggleSet(s[1].id) // un-check
+        assertEquals("Squat", com.hectormtzm.liftlog.ui.workout.nextUpName(ex(), p[1].id))
+    }
 }
